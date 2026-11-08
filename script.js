@@ -1,4 +1,3 @@
-
 /* ========= CONFIG: edit these ========= */
 const GITHUB_USER = "devisettisyamkumar-oss";
 
@@ -26,7 +25,7 @@ const tools = [
 ];
 
 /* First 3 show as cards; the rest sit under "View more".
-   Replace the "#" links with your real GitHub / deployed URLs. */
+   Put your real deployed URL in demo. Leave null to show "Coming Soon". */
 const projects = [
   {
     title: "Java Spring Boot Backend REST API",
@@ -46,7 +45,7 @@ const projects = [
       "Responsive web app that calculates loan eligibility in real time from user financial inputs, with client-side validation and instant visual feedback.",
     stack: ["HTML5", "CSS3", "JavaScript"],
     github: `https://github.com/${GITHUB_USER}`,
-    demo: "#",
+    demo: null, // paste your deployed URL here
   },
   {
     title: "Visitor ID Creator / Token System",
@@ -56,7 +55,7 @@ const projects = [
       "Interactive visitor registration interface that generates unique ID tokens and records check-in data, built for clean usability and fast entry workflows.",
     stack: ["HTML5", "CSS3", "JavaScript"],
     github: `https://github.com/${GITHUB_USER}`,
-    demo: "#",
+    demo: null, // paste your deployed URL here
   },
   {
     title: "Personal Portfolio Website",
@@ -66,13 +65,18 @@ const projects = [
       "This responsive single-page portfolio with a sticky navbar, education timeline, project cards, GitHub activity and a working contact form.",
     stack: ["HTML5", "CSS3", "JavaScript"],
     github: `https://github.com/${GITHUB_USER}`,
-    demo: "#",
+    demo: "https://portfolio-three-wine-1gigybydeh.vercel.app/",
   },
 ];
 
-/* ========= RENDER ========= */
+/* ========= HELPERS ========= */
 const el = (id) => document.getElementById(id);
 
+const reduceMotion = window.matchMedia(
+  "(prefers-reduced-motion: reduce)"
+).matches;
+
+/* ========= RENDER: SKILLS ========= */
 function renderLogos(list, target) {
   target.innerHTML = list
     .map(
@@ -87,11 +91,15 @@ function renderLogos(list, target) {
 renderLogos(techSkills, el("techGrid"));
 renderLogos(tools, el("toolsGrid"));
 
+/* ========= RENDER: PROJECTS ========= */
 const VISIBLE = 3;
+
 el("projectGrid").innerHTML = projects
   .map((p, i) => {
     const isLive = p.status.toLowerCase().includes("live");
-    const demoBtn = p.demo
+    const hasDemo = p.demo && p.demo !== "#";
+
+    const demoBtn = hasDemo
       ? `<a class="btn btn-primary btn-sm" href="${p.demo}" target="_blank" rel="noopener noreferrer">Live Demo</a>`
       : `<span class="btn btn-outline btn-sm" aria-disabled="true" style="opacity:.55;cursor:default">Coming Soon</span>`;
 
@@ -126,13 +134,35 @@ viewMore.addEventListener("click", () => {
   viewMore.setAttribute("aria-expanded", open);
 });
 
-/* GitHub stats, languages and contribution calendar.
-   Built in the browser from GitHub's public API, so no image service can break. */
+/* ========= GITHUB: STATS, LANGUAGES, CALENDAR ========= */
 const ghProfile = `https://github.com/${GITHUB_USER}`;
 
 const ghFail = (box, msg) => {
   box.innerHTML = `<p class="gh-msg">${msg} <a href="${ghProfile}" target="_blank" rel="noopener noreferrer">View on GitHub</a></p>`;
 };
+
+function animateCounters(root) {
+  root.querySelectorAll("[data-count]").forEach((node) => {
+    const end = +node.dataset.count;
+
+    if (reduceMotion || end === 0) {
+      node.textContent = end;
+      return;
+    }
+
+    const start = performance.now();
+    const dur = 1200;
+
+    (function step(now) {
+      const t = Math.min((now - start) / dur, 1);
+      node.textContent = Math.round(end * (1 - Math.pow(1 - t, 3)));
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+      }
+    })(start);
+  });
+}
 
 async function loadGithubStats() {
   const statsBox = el("ghStats");
@@ -198,29 +228,6 @@ async function loadGithubStats() {
   }
 }
 
-function animateCounters(root) {
-  root.querySelectorAll("[data-count]").forEach((node) => {
-    const end = +node.dataset.count;
-
-    if (reduceMotionPref || end === 0) {
-      node.textContent = end;
-      return;
-    }
-
-    const start = performance.now();
-    const dur = 1200;
-
-    (function step(now) {
-      const t = Math.min((now - start) / dur, 1);
-      node.textContent = Math.round(end * (1 - Math.pow(1 - t, 3)));
-
-      if (t < 1) {
-        requestAnimationFrame(step);
-      }
-    })(start);
-  });
-}
-
 async function loadGithubCalendar() {
   const box = el("ghCalendar");
 
@@ -256,10 +263,6 @@ async function loadGithubCalendar() {
   }
 }
 
-const reduceMotionPref = window.matchMedia(
-  "(prefers-reduced-motion: reduce)"
-).matches;
-
 loadGithubStats();
 loadGithubCalendar();
 
@@ -281,14 +284,14 @@ navLinks.querySelectorAll("a").forEach((a) =>
   })
 );
 
-/* Highlight active section */
+/* Highlight active section (skips the Resume PDF link) */
 const links = [...navLinks.querySelectorAll("a:not(.nav-resume)")];
 
 const sections = links.map((l) =>
   document.querySelector(l.getAttribute("href"))
 );
 
-const io = new IntersectionObserver(
+const navIO = new IntersectionObserver(
   (entries) =>
     entries.forEach((e) => {
       if (e.isIntersecting) {
@@ -303,11 +306,11 @@ const io = new IntersectionObserver(
   { rootMargin: "-45% 0px -50% 0px" }
 );
 
-sections.forEach((s) => s && io.observe(s));
+sections.forEach((s) => s && navIO.observe(s));
 
 /* ========= CONTACT FORM (Web3Forms) ========= */
 const form = el("contactForm");
-const status = el("formStatus");
+const formStatus = el("formStatus");
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -319,14 +322,14 @@ form.addEventListener("submit", async (e) => {
     !data.get("email").trim() ||
     !data.get("message").trim()
   ) {
-    status.className = "form-status err";
-    status.textContent = "Please fill in your name, email and message.";
+    formStatus.className = "form-status err";
+    formStatus.textContent = "Please fill in your name, email and message.";
     return;
   }
 
   if (!form.email.checkValidity()) {
-    status.className = "form-status err";
-    status.textContent = "Please enter a valid email address.";
+    formStatus.className = "form-status err";
+    formStatus.textContent = "Please enter a valid email address.";
     return;
   }
 
@@ -344,15 +347,15 @@ form.addEventListener("submit", async (e) => {
     const json = await res.json();
 
     if (json.success) {
-      status.className = "form-status ok";
-      status.textContent = "Thanks! Your message has been sent.";
+      formStatus.className = "form-status ok";
+      formStatus.textContent = "Thanks! Your message has been sent.";
       form.reset();
     } else {
       throw new Error(json.message || "Failed");
     }
   } catch (err) {
-    status.className = "form-status err";
-    status.textContent =
+    formStatus.className = "form-status err";
+    formStatus.textContent =
       "Could not send the message. Please email me directly.";
   } finally {
     btn.disabled = false;
@@ -364,10 +367,6 @@ el("year").textContent = new Date().getFullYear();
 
 /* ========= ANIMATIONS ========= */
 document.documentElement.classList.add("js");
-
-const reduceMotion = window.matchMedia(
-  "(prefers-reduced-motion: reduce)"
-).matches;
 
 /* Typing effect in the hero */
 (function typing() {
@@ -586,8 +585,3 @@ if (!reduceMotion && "IntersectionObserver" in window) {
     }
   }).observe(cv);
 })();
-
-/* ========= RESUME =========
-   The resume links are configured in index.html.
-   No JavaScript changes are required for the Google Drive links. */
-
