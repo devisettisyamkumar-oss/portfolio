@@ -1,5 +1,5 @@
 /* ========= CONFIG: edit these ========= */
-const GITHUB_USER = "devisettisyamkumar";
+const GITHUB_USER = "devisettisyamkumar-oss";
 
 // Logos are stored locally in assets/icons so they never fail to load
 const dev = (name) => `assets/icons/${name}.svg`;
