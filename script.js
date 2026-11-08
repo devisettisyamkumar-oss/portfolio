@@ -1,3 +1,4 @@
+
 /* ========= CONFIG: edit these ========= */
 const GITHUB_USER = "devisettisyamkumar-oss";
 
@@ -82,6 +83,7 @@ function renderLogos(list, target) {
     )
     .join("");
 }
+
 renderLogos(techSkills, el("techGrid"));
 renderLogos(tools, el("toolsGrid"));
 
@@ -92,6 +94,7 @@ el("projectGrid").innerHTML = projects
     const demoBtn = p.demo
       ? `<a class="btn btn-primary btn-sm" href="${p.demo}" target="_blank" rel="noopener noreferrer">Live Demo</a>`
       : `<span class="btn btn-outline btn-sm" aria-disabled="true" style="opacity:.55;cursor:default">Coming Soon</span>`;
+
     return `<article class="card project-card ${i >= VISIBLE ? "extra" : ""}">
       <img class="project-cover" src="${p.cover}" alt="${p.title} cover" loading="lazy" />
       <div class="project-body">
@@ -112,7 +115,11 @@ el("projectGrid").innerHTML = projects
 
 /* View more / less */
 const viewMore = el("viewMore");
-if (projects.length <= VISIBLE) viewMore.style.display = "none";
+
+if (projects.length <= VISIBLE) {
+  viewMore.style.display = "none";
+}
+
 viewMore.addEventListener("click", () => {
   const open = el("projectGrid").classList.toggle("expanded");
   viewMore.textContent = open ? "View less" : "View more";
@@ -122,6 +129,7 @@ viewMore.addEventListener("click", () => {
 /* GitHub stats, languages and contribution calendar.
    Built in the browser from GitHub's public API, so no image service can break. */
 const ghProfile = `https://github.com/${GITHUB_USER}`;
+
 const ghFail = (box, msg) => {
   box.innerHTML = `<p class="gh-msg">${msg} <a href="${ghProfile}" target="_blank" rel="noopener noreferrer">View on GitHub</a></p>`;
 };
@@ -129,12 +137,17 @@ const ghFail = (box, msg) => {
 async function loadGithubStats() {
   const statsBox = el("ghStats");
   const langBox = el("ghLang");
+
   try {
     const [uRes, rRes] = await Promise.all([
       fetch(`https://api.github.com/users/${GITHUB_USER}`),
       fetch(`https://api.github.com/users/${GITHUB_USER}/repos?per_page=100&sort=updated`),
     ]);
-    if (!uRes.ok || !rRes.ok) throw new Error("GitHub API " + uRes.status);
+
+    if (!uRes.ok || !rRes.ok) {
+      throw new Error("GitHub API " + uRes.status);
+    }
+
     const user = await uRes.json();
     const repos = (await rRes.json()).filter((r) => !r.fork);
     const stars = repos.reduce((n, r) => n + r.stargazers_count, 0);
@@ -145,22 +158,35 @@ async function loadGithubStats() {
       ["Following", user.following],
       ["Total Stars", stars],
     ];
+
     statsBox.innerHTML = `<div class="gh-wrap">
       <h5>GitHub Stats</h5>
       <div class="stat-tiles">${tiles
         .map(([k, v]) => `<div class="stat-tile"><strong data-count="${v}">0</strong><span>${k}</span></div>`)
         .join("")}</div>
     </div>`;
+
     animateCounters(statsBox);
 
     const counts = {};
-    repos.forEach((r) => r.language && (counts[r.language] = (counts[r.language] || 0) + 1));
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+    repos.forEach((r) => {
+      if (r.language) {
+        counts[r.language] = (counts[r.language] || 0) + 1;
+      }
+    });
+
+    const entries = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+
     const total = entries.reduce((n, [, c]) => n + c, 0);
+
     langBox.innerHTML = entries.length
       ? `<div class="gh-wrap"><h5>Top Languages</h5><ul class="lang-list">${entries
           .map(([name, c]) => {
             const pct = Math.round((c / total) * 100);
+
             return `<li><div class="lang-row"><span>${name}</span><span>${pct}%</span></div>
               <div class="lang-bar"><i style="--w:${pct}%"></i></div></li>`;
           })
@@ -175,29 +201,51 @@ async function loadGithubStats() {
 function animateCounters(root) {
   root.querySelectorAll("[data-count]").forEach((node) => {
     const end = +node.dataset.count;
-    if (reduceMotionPref || end === 0) { node.textContent = end; return; }
+
+    if (reduceMotionPref || end === 0) {
+      node.textContent = end;
+      return;
+    }
+
     const start = performance.now();
     const dur = 1200;
+
     (function step(now) {
       const t = Math.min((now - start) / dur, 1);
       node.textContent = Math.round(end * (1 - Math.pow(1 - t, 3)));
-      if (t < 1) requestAnimationFrame(step);
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+      }
     })(start);
   });
 }
 
 async function loadGithubCalendar() {
   const box = el("ghCalendar");
+
   try {
-    const res = await fetch(`https://github-contributions-api.jogruber.de/v4/${GITHUB_USER}?y=last`);
-    if (!res.ok) throw new Error("calendar " + res.status);
+    const res = await fetch(
+      `https://github-contributions-api.jogruber.de/v4/${GITHUB_USER}?y=last`
+    );
+
+    if (!res.ok) {
+      throw new Error("calendar " + res.status);
+    }
+
     const data = await res.json();
     const days = data.contributions;
     const total = Object.values(data.total || {}).reduce((a, b) => a + b, 0);
-    const pad = new Date(days[0].date + "T00:00:00").getDay(); // blank cells so weeks start on Sunday
+
+    const pad = new Date(days[0].date + "T00:00:00").getDay();
+
+    // Blank cells so weeks start on Sunday
     const cells = Array(pad).fill('<i class="day pad"></i>').concat(
-      days.map((d) => `<i class="day l${d.level}" title="${d.count} contributions on ${d.date}"></i>`)
+      days.map(
+        (d) => `<i class="day l${d.level}" title="${d.count} contributions on ${d.date}"></i>`
+      )
     );
+
     box.innerHTML = `<div class="gh-wrap">
       <h5>GitHub Contributions <small>${total} in the last year</small></h5>
       <div class="cal-scroll"><div class="cal-grid">${cells.join("")}</div></div>
@@ -208,18 +256,23 @@ async function loadGithubCalendar() {
   }
 }
 
-const reduceMotionPref = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduceMotionPref = window.matchMedia(
+  "(prefers-reduced-motion: reduce)"
+).matches;
+
 loadGithubStats();
 loadGithubCalendar();
 
 /* ========= NAVBAR ========= */
 const menuBtn = el("menuBtn");
 const navLinks = el("navLinks");
+
 menuBtn.addEventListener("click", () => {
   const open = navLinks.classList.toggle("open");
   menuBtn.classList.toggle("open", open);
   menuBtn.setAttribute("aria-expanded", open);
 });
+
 navLinks.querySelectorAll("a").forEach((a) =>
   a.addEventListener("click", () => {
     navLinks.classList.remove("open");
@@ -230,44 +283,66 @@ navLinks.querySelectorAll("a").forEach((a) =>
 
 /* Highlight active section */
 const links = [...navLinks.querySelectorAll("a:not(.nav-resume)")];
-const sections = links.map((l) => document.querySelector(l.getAttribute("href")));
+
+const sections = links.map((l) =>
+  document.querySelector(l.getAttribute("href"))
+);
+
 const io = new IntersectionObserver(
   (entries) =>
     entries.forEach((e) => {
       if (e.isIntersecting) {
-        links.forEach((l) => l.classList.toggle("active", l.getAttribute("href") === "#" + e.target.id));
+        links.forEach((l) =>
+          l.classList.toggle(
+            "active",
+            l.getAttribute("href") === "#" + e.target.id
+          )
+        );
       }
     }),
   { rootMargin: "-45% 0px -50% 0px" }
 );
+
 sections.forEach((s) => s && io.observe(s));
 
 /* ========= CONTACT FORM (Web3Forms) ========= */
 const form = el("contactForm");
 const status = el("formStatus");
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const data = new FormData(form);
-  if (!data.get("name").trim() || !data.get("email").trim() || !data.get("message").trim()) {
+
+  if (
+    !data.get("name").trim() ||
+    !data.get("email").trim() ||
+    !data.get("message").trim()
+  ) {
     status.className = "form-status err";
     status.textContent = "Please fill in your name, email and message.";
     return;
   }
+
   if (!form.email.checkValidity()) {
     status.className = "form-status err";
     status.textContent = "Please enter a valid email address.";
     return;
   }
+
   const btn = el("sendBtn");
   btn.disabled = true;
   btn.textContent = "Sending...";
+
   try {
     const res = await fetch("https://api.web3forms.com/submit", {
       method: "POST",
       headers: { Accept: "application/json" },
       body: data,
     });
+
     const json = await res.json();
+
     if (json.success) {
       status.className = "form-status ok";
       status.textContent = "Thanks! Your message has been sent.";
@@ -277,7 +352,8 @@ form.addEventListener("submit", async (e) => {
     }
   } catch (err) {
     status.className = "form-status err";
-    status.textContent = "Could not send the message. Please email me directly.";
+    status.textContent =
+      "Could not send the message. Please email me directly.";
   } finally {
     btn.disabled = false;
     btn.textContent = "Send Message";
@@ -288,28 +364,51 @@ el("year").textContent = new Date().getFullYear();
 
 /* ========= ANIMATIONS ========= */
 document.documentElement.classList.add("js");
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const reduceMotion = window.matchMedia(
+  "(prefers-reduced-motion: reduce)"
+).matches;
 
 /* Typing effect in the hero */
 (function typing() {
   const target = el("typed");
-  if (!target || reduceMotion) return;
+
+  if (!target || reduceMotion) {
+    return;
+  }
+
   const words = [
     "Java Backend Developer",
     "Full Stack Developer",
     "Spring Boot & REST APIs",
     "Problem Solver",
   ];
-  let w = 0, c = 0, deleting = false;
+
+  let w = 0,
+    c = 0,
+    deleting = false;
+
   function tick() {
     const word = words[w];
+
     target.textContent = word.slice(0, c);
+
     let speed = deleting ? 45 : 90;
-    if (!deleting && c === word.length) { deleting = true; speed = 1500; }
-    else if (deleting && c === 0) { deleting = false; w = (w + 1) % words.length; speed = 350; }
+
+    if (!deleting && c === word.length) {
+      deleting = true;
+      speed = 1500;
+    } else if (deleting && c === 0) {
+      deleting = false;
+      w = (w + 1) % words.length;
+      speed = 350;
+    }
+
     c += deleting ? -1 : 1;
+
     setTimeout(tick, speed);
   }
+
   target.textContent = "";
   setTimeout(tick, 900);
 })();
@@ -317,30 +416,47 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").match
 /* Scroll progress bar + navbar shadow */
 const progress = el("progress");
 const navbar = el("navbar");
+
 function onScroll() {
   const h = document.documentElement;
   const max = h.scrollHeight - h.clientHeight;
+
   progress.style.transform = `scaleX(${max > 0 ? h.scrollTop / max : 0})`;
   navbar.classList.toggle("scrolled", h.scrollTop > 10);
 }
+
 addEventListener("scroll", onScroll, { passive: true });
 onScroll();
 
 /* Reveal on scroll, staggered inside each group */
 if (!reduceMotion && "IntersectionObserver" in window) {
-  const selector = ".section-title, .sub-title, .about-text, .tl-card, .logo-item, .project-card, .gh-card, .contact-info, .contact-form, .center";
+  const selector =
+    ".section-title, .sub-title, .about-text, .tl-card, .logo-item, .project-card, .gh-card, .contact-info, .contact-form, .center";
+
   document.querySelectorAll(selector).forEach((node) => {
-    const siblings = [...node.parentElement.children].filter((n) => n.matches(selector));
-    node.style.setProperty("--d", Math.min(siblings.indexOf(node), 8) * 0.08 + "s");
+    const siblings = [...node.parentElement.children].filter((n) =>
+      n.matches(selector)
+    );
+
+    node.style.setProperty(
+      "--d",
+      Math.min(siblings.indexOf(node), 8) * 0.08 + "s"
+    );
+
     node.classList.add("reveal");
   });
+
   const revealIO = new IntersectionObserver(
     (entries, obs) =>
       entries.forEach((e) => {
-        if (!e.isIntersecting) return;
+        if (!e.isIntersecting) {
+          return;
+        }
+
         e.target.classList.add("in");
         obs.unobserve(e.target);
-        // hand control back to the normal hover transitions afterwards
+
+        // Hand control back to the normal hover transitions afterwards
         setTimeout(() => {
           e.target.classList.remove("reveal", "in");
           e.target.style.removeProperty("--d");
@@ -348,12 +464,19 @@ if (!reduceMotion && "IntersectionObserver" in window) {
       }),
     { threshold: 0.12 }
   );
+
   document.querySelectorAll(".reveal").forEach((n) => revealIO.observe(n));
 
   const timeline = document.querySelector(".timeline");
+
   if (timeline) {
     new IntersectionObserver(
-      ([e], obs) => { if (e.isIntersecting) { timeline.classList.add("drawn"); obs.disconnect(); } },
+      ([e], obs) => {
+        if (e.isIntersecting) {
+          timeline.classList.add("drawn");
+          obs.disconnect();
+        }
+      },
       { threshold: 0.2 }
     ).observe(timeline);
   }
@@ -364,37 +487,67 @@ if (!reduceMotion && "IntersectionObserver" in window) {
 /* Particle network behind the hero */
 (function particles() {
   const cv = el("particles");
-  if (!cv || reduceMotion) return;
+
+  if (!cv || reduceMotion) {
+    return;
+  }
+
   const ctx = cv.getContext("2d");
-  let w = 0, h = 0, pts = [], running = false;
+
+  let w = 0,
+    h = 0,
+    pts = [],
+    running = false;
 
   function resize() {
     const r = cv.parentElement.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    w = r.width; h = r.height;
-    cv.width = w * dpr; cv.height = h * dpr;
+
+    w = r.width;
+    h = r.height;
+
+    cv.width = w * dpr;
+    cv.height = h * dpr;
+
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     const n = Math.min(70, Math.floor((w * h) / 18000));
+
     pts = Array.from({ length: n }, () => ({
-      x: Math.random() * w, y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35,
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
       r: Math.random() * 1.8 + 0.7,
     }));
   }
+
   function draw() {
     ctx.clearRect(0, 0, w, h);
+
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i];
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < 0 || p.x > w) p.vx *= -1;
-      if (p.y < 0 || p.y > h) p.vy *= -1;
+
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0 || p.x > w) {
+        p.vx *= -1;
+      }
+
+      if (p.y < 0 || p.y > h) {
+        p.vy *= -1;
+      }
+
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(244,162,97,.7)";
       ctx.fill();
+
       for (let j = i + 1; j < pts.length; j++) {
         const q = pts[j];
         const d = Math.hypot(p.x - q.x, p.y - q.y);
+
         if (d < 120) {
           ctx.strokeStyle = `rgba(76,201,240,${0.2 * (1 - d / 120)})`;
           ctx.beginPath();
@@ -405,20 +558,36 @@ if (!reduceMotion && "IntersectionObserver" in window) {
       }
     }
   }
+
   function loop() {
-    if (!running) return;
+    if (!running) {
+      return;
+    }
+
     draw();
     requestAnimationFrame(loop);
   }
+
   resize();
+
   let t;
-  addEventListener("resize", () => { clearTimeout(t); t = setTimeout(resize, 200); });
+
+  addEventListener("resize", () => {
+    clearTimeout(t);
+    t = setTimeout(resize, 200);
+  });
+
   new IntersectionObserver(([e]) => {
     const was = running;
     running = e.isIntersecting;
-    if (running && !was) loop();
+
+    if (running && !was) {
+      loop();
+    }
   }).observe(cv);
 })();
 
-/* ========= RESUME: View link =========
-   Paste your Google Drive share link into index.html (id="viewResume" href). */
+/* ========= RESUME =========
+   The resume links are configured in index.html.
+   No JavaScript changes are required for the Google Drive links. */
+
